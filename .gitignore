@@ -1,0 +1,14 @@
+# Virtual environment
+venv/
+
+# Compiled files
+__pycache__/
+*.py[cod]
+
+# PyCharm
+.idea/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+/replied_tweets.json
+/src/credentials.json
