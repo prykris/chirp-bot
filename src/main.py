@@ -2,14 +2,17 @@ import json
 import time
 from typing import Dict
 
-from selenium.common import StaleElementReferenceException
+from selenium.common import StaleElementReferenceException, NoSuchElementException
+from selenium.webdriver import ActionChains, Keys
+from selenium.webdriver.common.by import By
 
-from driver_setup import driver, load_cookies_for_domain, load_local_storage_for_domain, save_cookies_for_domain, \
-    save_local_storage_for_domain
+from driver_setup import driver
+from xpath_map import TWEET_CLOSE_BUTTON, TWEET_SAVE_DRAFT_BUTTON, TWEET_DISCARD_DRAFT_BUTTON
 from tweet import Tweet
 from twitter_actions import login_to_twitter, search_tweets, get_tweet_elements, extract_tweet_data, reply_to_tweet
 
 use_gpt = True
+save_draft_on_fail = True
 
 
 def save_credentials(username_: str, password_: str, filename='credentials.json'):
@@ -37,9 +40,93 @@ def load_tweets_from_file(filename: str = 'tweets.json') -> Dict[str, Tweet]:
         with open('../' + filename, 'r') as f:
             data_ = json.load(f)
             tweets = {k: Tweet.from_dict(v) for k, v in data_.items()}
+
+            print(f"Loaded {len(tweets)} replied tweets.")
     except FileNotFoundError:
         print(f"{filename} not found. Starting fresh.")
     return tweets
+
+
+def start():
+    replied_session = 0
+
+    for tweet_element in get_tweet_elements():
+        try:
+            tweet = Tweet.from_dict(extract_tweet_data(tweet_element))
+
+            print(
+                '-' * 80,
+                '\n',
+                f'[{tweet.time.format("%b %d, %Y at %I:%M")}] @{tweet.user}: {tweet.text[:30]}...',
+            )
+
+            if tweet.id not in replied_tweets:
+
+                # Store the Tweet object
+                parsed_tweets[tweet.id] = tweet_element
+
+                replied = reply_to_tweet(tweet_element, tweet)
+
+                if replied:
+                    replied_tweets[tweet.id] = tweet
+                    print(f"    * Successfully replied to tweet! [{len(replied_tweets)}/{len(parsed_tweets)}]")
+
+                    replied_session += 1
+
+                    if replied_session % 50 == 0:
+                        print('    * Sleeping for 30 minutes...')
+                        time.sleep(60 * 60 * 30)
+                        print('    * Resumed. Refreshing time line ...')
+                        search_tweets(search_query)
+                        print('    * Waiting for 10 seconds and then bot will resume...')
+                        time.sleep(10)
+
+            else:
+                print(f"    * Tweet {tweet.id} has already been replied to.")
+        except StaleElementReferenceException:
+            print(" - Tweet was unloaded from DOM. Skipping...")
+            continue
+        except NoSuchElementException as e_:
+            print(f" - Tweet {tweet_element.id} scope lacks an element: {e_.msg}")
+            continue
+        except Exception as e_:
+            print(f" - While processing tweet: {e_}")
+            continue
+        finally:
+            try:
+                close_button = driver.find_element(By.XPATH, TWEET_CLOSE_BUTTON).click()
+
+                if close_button:
+                    close_button.click()
+                    print('    * Tweet is closing due to error...')
+
+                    time.sleep(3)
+
+                    if save_draft_on_fail:
+                        save_button = driver.find_element(By.XPATH, TWEET_SAVE_DRAFT_BUTTON)
+
+                        if save_button:
+                            save_button.click()
+                            print('    * The invalid tweet was saved as a draft.')
+                    else:
+                        discard_button = driver.find_element(By.XPATH, TWEET_DISCARD_DRAFT_BUTTON)
+
+                        if discard_button:
+                            discard_button.click()
+                            print('    * The invalid tweet was discarded.')
+
+                action = ActionChains(driver)
+                action.send_keys(Keys.ESCAPE).perform()
+                time.sleep(1)
+                action.send_keys(Keys.ESCAPE).perform()
+
+            except NoSuchElementException:
+                print('    * Closing previous tweet was not necessary, no close button found.')
+            except Exception as e_:
+                print(f" - While closing tweet: {e_}")
+                search_tweets(search_query)
+
+        continue
 
 
 if __name__ == "__main__":
@@ -92,34 +179,21 @@ if __name__ == "__main__":
 
         time.sleep(5)
 
-        search_query = input("Enter a search query: ")
+        while True:
+            try:
+                search_query = input("Enter a search query: ")
 
-        # Search tweets
-        search_tweets(search_query)
+                if search_query == 'exit' or len(search_query) < 2:
+                    break
 
-        try:
-            for tweet_element in get_tweet_elements():
-                tweet = Tweet.from_dict(extract_tweet_data(tweet_element))
+                # Search tweets
+                search_tweets(search_query)
 
-                if tweet.id not in replied_tweets:
-                    # Store the Tweet object
-                    parsed_tweets[tweet.id] = tweet_element
-
-                    print(f"--- #{tweet.id} Processing ...")
-
-                    replied = reply_to_tweet(tweet_element, tweet)
-
-                    if replied:
-                        replied_tweets[tweet.id] = tweet
-
-                        print(f"--- #{tweet.id} Replied!")
-                else:
-                    print(f"--- #{tweet_element.id} Skipping...")
-        except StaleElementReferenceException as e:
-            print("StaleElementReferenceException! Skipping...")
-
-            # Print the stack trace
-            time.sleep(2)
+                # Start looping and answering
+                start()
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt in query loop. Prompting to enter new query...")
+                continue
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -136,7 +210,7 @@ if __name__ == "__main__":
         # save_cookies_for_domain('../cookies_tweet-gpt.pkl', 'https://tweetgpt.app')
         # save_local_storage_for_domain('../local_storage_tweet-gpt.pkl')
 
-        # driver.close()
+        driver.close()
 
     # Wait until all Chrome windows are closed
     while len(driver.window_handles) > 0:

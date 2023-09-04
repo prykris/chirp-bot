@@ -9,9 +9,13 @@ LOGIN_BUTTON = ('/html/body/div/div/div/div[1]/div/div/div/div/div/div/div[2]/di
 LOGIN_ERROR_ALERT_SPAN = '//div[@role="alert"][contains(@class,"css-1dbjc4n")]//span'
 
 TWEET_WRAPPER = '//div[@data-testid="cellInnerDiv"]'
+TWEET_CLOSE_BUTTON = '//div[@data-testid="app-bar-close"]'
+TWEET_SAVE_DRAFT_BUTTON = '//div[@data-testid="confirmationSheetConfirm"]'
+TWEET_DISCARD_DRAFT_BUTTON = '//div[@data-testid="confirmationSheetCancel"]'
 
-TWEET_REPLY_BUTTON = '//div[@data-testid="reply"]'
+TWEET_REPLY_BUTTON = './/div[@data-testid="reply"]'
 TWEET_REPLY_INPUT = '//div[@data-testid="tweetTextarea_0"]'
 TWEET_BUTTON = '//div[@data-testid="tweetButton"]'
 
 TWEET_GPT_BUTTON = '//div[@id="gptButton"]'
+TWEET_GPT_SUPPORTIVE_BUTTON = '//div[@class="gptSelectorContainer"]/div[1][@class="gptSelector"]'
