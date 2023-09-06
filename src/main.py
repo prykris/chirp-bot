@@ -14,6 +14,9 @@ from twitter_actions import login_to_twitter, search_tweets, get_tweet_elements,
 use_gpt = True
 save_draft_on_fail = True
 
+search_query_index = 0
+search_queries = []
+
 
 def save_credentials(username_: str, password_: str, filename='credentials.json'):
     with open(filename, 'w') as f:
@@ -29,9 +32,11 @@ def load_credentials(filename='credentials.json'):
         return None, None
 
 
-def save_tweets_to_file(tweets: Dict[str, Tweet], filename: str = 'tweets.json'):
+def save_tweets_to_file(tweets: Dict[str, Tweet], filename: str = 'tweets.json') -> True:
     with open('../' + filename, 'w') as f:
         json.dump({k: v.to_dict() for k, v in tweets.items()}, f)
+
+    return True
 
 
 def load_tweets_from_file(filename: str = 'tweets.json') -> Dict[str, Tweet]:
@@ -45,6 +50,19 @@ def load_tweets_from_file(filename: str = 'tweets.json') -> Dict[str, Tweet]:
     except FileNotFoundError:
         print(f"{filename} not found. Starting fresh.")
     return tweets
+
+
+def get_query() -> str:
+    global search_query_index
+
+    # Use search query index to get the next query to search
+    # if index out of bounds, reset the index variable
+    if search_query_index >= len(search_queries):
+        search_query_index = 0
+    search_query = search_queries[search_query_index]
+    search_query_index += 1
+
+    return search_query
 
 
 def start():
@@ -75,9 +93,9 @@ def start():
 
                     if replied_session % 50 == 0:
                         print('    * Sleeping for 30 minutes...')
-                        time.sleep(60 * 60 * 30)
+                        time.sleep(60 * 30)
                         print('    * Resumed. Refreshing time line ...')
-                        search_tweets(search_query)
+                        search_tweets(get_query())
                         print('    * Waiting for 10 seconds and then bot will resume...')
                         time.sleep(10)
 
@@ -124,7 +142,7 @@ def start():
                 print('    * Closing previous tweet was not necessary, no close button found.')
             except Exception as e_:
                 print(f" - While closing tweet: {e_}")
-                search_tweets(search_query)
+                search_tweets(get_query())
 
         continue
 
@@ -142,6 +160,14 @@ if __name__ == "__main__":
     # Store the tweets
     parsed_tweets: Dict[str, Tweet] = {}
     replied_tweets: Dict[str, Tweet] = load_tweets_from_file('replied_tweets.json')
+
+    initial_search_query_input = input("Enter a search query (or leave empty for later): ")
+    search_queries = [item for item in initial_search_query_input.split(', ') if item != ""]
+
+    if len(search_queries) > 0:
+        print(f"Initial search queries {len(search_queries)} count")
+    else:
+        print(f"Initial search queries count is 0, search query will be asked after authorizing the bot")
 
     try:
         # Login to Twitter
@@ -181,16 +207,17 @@ if __name__ == "__main__":
 
         while True:
             try:
-                search_query = input("Enter a search query: ")
+                if len(search_queries) < 1:
+                    search_query_input = input("Enter a search query: ")
+
+                    search_queries = [item for item in search_query_input.split(', ') if item != ""]
+
+                search_query = get_query()
 
                 if search_query == 'exit' or len(search_query) < 2:
                     break
-
-                # Search tweets
-                search_tweets(search_query)
-
-                # Start looping and answering
-                start()
+                else:
+                    start()
             except KeyboardInterrupt:
                 print("KeyboardInterrupt in query loop. Prompting to enter new query...")
                 continue
@@ -200,8 +227,13 @@ if __name__ == "__main__":
         # Potentially other debugging information here.
         pass
     finally:
-        # Save the tweets
-        save_tweets_to_file(replied_tweets, 'replied_tweets.json')
+        try:
+            # Save the tweets and ignore keyboard interrupt
+            save_tweets_to_file(replied_tweets, 'replied_tweets.json')
+        except KeyboardInterrupt:
+            print("Ctrl + C was ignored. Saving replied_tweets.json before exiting.")
+            save_tweets_to_file(replied_tweets, 'replied_tweets.json')
+            raise
 
         # # the cookies and local storages are populated we need to save them for later
         # save_cookies_for_domain('../cookies_twitter.pkl')

@@ -16,6 +16,8 @@ from tweet import Tweet
 
 
 def login_to_twitter(username, password) -> bool:
+    print("Logging into Twitter...")
+
     driver.get("https://twitter.com/login")
     time.sleep(2)
 
@@ -70,6 +72,8 @@ def login_to_twitter(username, password) -> bool:
 
 
 def search_tweets(query):
+    print(f"Searching for tweets with keywords {query}...")
+
     params = {
         'q': query + ' lang:en -filter:retweets -filter:replies',
         'src': 'typed_query',
@@ -82,6 +86,7 @@ def search_tweets(query):
 
 
 def get_tweet_elements():
+    print("Getting tweet elements...")
     running = True
 
     while running:
