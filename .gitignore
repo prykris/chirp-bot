@@ -10,5 +10,7 @@ __pycache__/
 
 # Jupyter notebooks
 .ipynb_checkpoints/
-/replied_tweets.json
-/src/credentials.json
+
+# Storage files
+replied_tweets.json
+credentials.json

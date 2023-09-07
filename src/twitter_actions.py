@@ -16,8 +16,6 @@ from tweet import Tweet
 
 
 def login_to_twitter(username, password) -> bool:
-    print("Logging into Twitter...")
-
     driver.get("https://twitter.com/login")
     time.sleep(2)
 
@@ -66,14 +64,13 @@ def login_to_twitter(username, password) -> bool:
             return False
 
     except TimeoutException:
-        print("No error message detected within 10 seconds, proceeding...")
+        # This means successfully logged in!
+        pass
 
     return True
 
 
-def search_tweets(query):
-    print(f"Searching for tweets with keywords {query}...")
-
+def search_tweets(query: str) -> None:
     params = {
         'q': query + ' lang:en -filter:retweets -filter:replies',
         'src': 'typed_query',
@@ -155,7 +152,7 @@ def extract_tweet_data(tweet_element) -> dict:
     }
 
 
-def reply_to_tweet(tweet_element: WebElement, tweet: Tweet) -> bool:
+def reply_to_tweet(tweet_element: WebElement, tweet: Tweet, button_xpath: TWEET_GPT_SUPPORTIVE_BUTTON) -> bool:
     from xpath_map import TWEET_GPT_BUTTON
 
     # Click on reply button
@@ -181,7 +178,7 @@ def reply_to_tweet(tweet_element: WebElement, tweet: Tweet) -> bool:
         initial_windows = driver.window_handles
 
         supportive_button = driver.find_element(
-            By.XPATH, TWEET_GPT_SUPPORTIVE_BUTTON
+            By.XPATH, button_xpath
         )
 
         supportive_button.click()
