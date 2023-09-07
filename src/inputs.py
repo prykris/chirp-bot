@@ -67,4 +67,4 @@ def prompt_tweet_gpt_mode(default: int) -> str:
         return TWEET_GPT_PASSIVE_AGGRESSIVE_BUTTON
     else:
         print("Invalid choice. Please select a valid option.")
-        return prompt_tweet_gpt_mode()
+        return prompt_tweet_gpt_mode(default)
