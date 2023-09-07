@@ -5,14 +5,14 @@ from selenium.common import StaleElementReferenceException, NoSuchElementExcepti
 from selenium.webdriver import ActionChains, Keys
 
 from driver_setup import driver
-from inputs import prompt_search_queries, prompt_integer
+from inputs import prompt_search_queries, prompt_integer, prompt_tweet_gpt_mode
 from xpath_map import TWEET_GPT_SUPPORTIVE_BUTTON
 from storage import load_credentials, save_credentials, load_tweets_from_file, save_tweets_to_file
 from tweet import Tweet
 from twitter_actions import login_to_twitter, search_tweets, get_tweet_elements, extract_tweet_data, reply_to_tweet
 
 if __name__ == "__main__":
-    print('Starting Chirp Bot v0.2.0!')
+    print('Starting Chirp Bot v0.3.0!')
 
     # Try to load saved credentials
     username, password = load_credentials()
@@ -28,6 +28,8 @@ if __name__ == "__main__":
 
     limit = prompt_integer('How many tweets do you want to reply to?', 50)
     sleep_timer = prompt_integer('How many minutes  do you want to wait between each batch of tweets?', 30)
+
+    reply_tone = prompt_tweet_gpt_mode(1)
 
     # Store the tweets
     parsed_tweets: Dict[str, Tweet] = {}
@@ -90,12 +92,14 @@ if __name__ == "__main__":
 
                         if not tweet_has_been_replied_to(tweet.id):
 
-                            replied = reply_to_tweet(tweet_element, tweet, TWEET_GPT_SUPPORTIVE_BUTTON)
+                            replied = reply_to_tweet(tweet_element, tweet, reply_tone)
                             # replied = True
 
                             if replied:
                                 replied_tweets[tweet.id] = tweet
-                                print(f"    * Successfully replied to tweet! [{len(replied_tweets)}/{len(parsed_tweets)}]")
+                                print(
+                                    f"    * Successfully replied to tweet! [{len(replied_tweets)}/{len(parsed_tweets)}]"
+                                )
 
                                 replied_query += 1
                                 replied_total += 1
